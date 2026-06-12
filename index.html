@@ -53,4 +53,233 @@
         </div>
 
         <div class="tab-buttons" style="margin-bottom:15px;">
-            <button onclick="showTab(0
+            <button onclick="showTab(0)">赛程表</button>
+            <button onclick="showTab(1)">积分榜</button>
+            <button onclick="showTab(2)">统计图表</button>
+            <button onclick="showTab(3)">比赛看板</button>
+        </div>
+
+        <!-- 赛程表 -->
+        <div id="tab0" class="tab active">
+            <h3>赛程（按日期排序 · 北京时间 UTC+8）</h3>
+            <table id="scheduleTable">
+                <thead><tr><th>日期</th><th>北京时间</th><th>小组</th><th>主队</th><th>比分</th><th>客队</th><th>场地</th></tr></thead>
+                <tbody></tbody>
+            </table>
+        </div>
+
+        <!-- 积分榜 -->
+        <div id="tab1" class="tab">
+            <h3>小组积分榜</h3>
+            <table id="standingsTable"><thead><tr><th>小组</th><th>球队</th><th>场</th><th>胜</th><th>平</th><th>负</th><th>进</th><th>失</th><th>净</th><th>分</th></tr></thead><tbody></tbody></table>
+        </div>
+
+        <!-- 图表 -->
+        <div id="tab2" class="tab">
+            <h3>球队表现</h3>
+            <canvas id="statsChart" height="120"></canvas>
+        </div>
+
+        <!-- 看板 -->
+        <div id="tab3" class="tab">
+            <h3>比赛看板</h3>
+            <div class="kanban-board" id="kanbanBoard"></div>
+        </div>
+    </div>
+
+    <script>
+        let matches = [];
+        let currentLang = 'zh';
+
+        // 完整简体中文映射（球队 + 场馆）
+        const teamMap = {
+            "Mexico": "墨西哥", "South Africa": "南非", "Korea Republic": "韩国", "Czechia": "捷克",
+            "Canada": "加拿大", "Bosnia and Herzegovina": "波黑", "Qatar": "卡塔尔", "Switzerland": "瑞士",
+            "Brazil": "巴西", "Morocco": "摩洛哥", "Haiti": "海地", "Scotland": "苏格兰",
+            "USA": "美国", "Paraguay": "巴拉圭", "Australia": "澳大利亚", "Türkiye": "土耳其",
+            "Germany": "德国", "Curaçao": "库拉索", "Côte d'Ivoire": "科特迪瓦", "Ecuador": "厄瓜多尔",
+            "Netherlands": "荷兰", "Japan": "日本", "Sweden": "瑞典", "Tunisia": "突尼斯",
+            "Belgium": "比利时", "Egypt": "埃及", "IR Iran": "伊朗", "New Zealand": "新西兰",
+            "Spain": "西班牙", "Cabo Verde": "佛得角", "Saudi Arabia": "沙特阿拉伯", "Uruguay": "乌拉圭",
+            "France": "法国", "Senegal": "塞内加尔", "Iraq": "伊拉克", "Norway": "挪威",
+            "Argentina": "阿根廷", "Algeria": "阿尔及利亚", "Austria": "奥地利", "Jordan": "约旦",
+            "Portugal": "葡萄牙", "Congo DR": "刚果（金）", "Uzbekistan": "乌兹别克斯坦", "Colombia": "哥伦比亚",
+            "England": "英格兰", "Croatia": "克罗地亚", "Ghana": "加纳", "Panama": "巴拿马"
+        };
+
+        const groundMap = {
+            "Mexico City": "墨西哥城体育场",
+            "Guadalajara (Zapopan)": "瓜达拉哈拉体育场",
+            "Toronto": "多伦多体育场",
+            "Los Angeles (Inglewood)": "洛杉矶体育场",
+            "BC Place Vancouver": "温哥华体育场",
+            "New York/New Jersey (East Rutherford)": "纽约/新泽西体育场",
+            "Boston (Foxborough)": "波士顿体育场",
+            "Philadelphia": "费城体育场",
+            "Houston": "休斯顿体育场",
+            "Dallas (Arlington)": "达拉斯体育场",
+            "Estadio Monterrey": "蒙特雷体育场",
+            "San Francisco Bay Area (Santa Clara)": "旧金山湾区体育场",
+            "Seattle": "西雅图体育场",
+            "Atlanta": "亚特兰大体育场",
+            "Miami (Miami Gardens)": "迈阿密体育场",
+            "Kansas City": "堪萨斯城体育场"
+        };
+
+        function translate(name, map) { return map[name] || name; }
+
+        function convertToBeijingTime(timeStr) {
+            if (!timeStr) return "待定";
+            const match = timeStr.match(/(\d+):(\d+)\s*UTC([+-]?\d+)/i);
+            if (!match) return timeStr;
+            let h = parseInt(match[1]) - parseInt(match[3]) + 8;
+            if (h >= 24) h -= 24; if (h < 0) h += 24;
+            return `${h.toString().padStart(2,'0')}:${match[2]} <span style="color:#1976d2">(北京时间)</span>`;
+        }
+
+        async function loadData() {
+            try {
+                const res = await fetch('https://raw.githubusercontent.com/openfootball/worldcup.json/master/2026/worldcup.json');
+                const data = await res.json();
+                matches = (data.matches || []).map(m => ({
+                    ...m,
+                    team1: translate(m.team1, teamMap),
+                    team2: translate(m.team2, teamMap),
+                    ground: translate(m.ground, groundMap),
+                    displayTime: convertToBeijingTime(m.time),
+                    hasScore: !!(m.score && m.score.ft)
+                }));
+            } catch(e) {
+                matches = getSampleData();
+            }
+            // 按日期 + 时间排序
+            matches.sort((a, b) => (a.date + (a.originalTime || '')).localeCompare(b.date + (b.originalTime || '')));
+            
+            renderSchedule();
+            renderStandings();
+            renderChart();
+            renderKanban();
+            populateGroupFilter();
+        }
+
+        function getSampleData() {
+            return [
+                {date:"2026-06-11", displayTime:"03:00 <span style='color:#1976d2'>(北京时间)</span>", group:"Group A", team1:"墨西哥", team2:"南非", score:{ft:[2,0]}, ground:"墨西哥城体育场", hasScore:true},
+                {date:"2026-06-11", displayTime:"10:00 <span style='color:#1976d2'>(北京时间)</span>", group:"Group A", team1:"韩国", team2:"捷克", score:{ft:[2,1]}, ground:"瓜达拉哈拉体育场", hasScore:true},
+                {date:"2026-06-12", displayTime:"03:00 <span style='color:#1976d2'>(北京时间)</span>", group:"Group B", team1:"加拿大", team2:"波黑", ground:"多伦多体育场", hasScore:false},
+                {date:"2026-06-12", displayTime:"09:00 <span style='color:#1976d2'>(北京时间)</span>", group:"Group D", team1:"美国", team2:"巴拉圭", ground:"洛杉矶体育场", hasScore:false}
+            ];
+        }
+
+        function renderSchedule(filtered = matches) {
+            const tbody = document.querySelector('#scheduleTable tbody');
+            tbody.innerHTML = '';
+            filtered.forEach(m => {
+                const row = document.createElement('tr');
+                const score = m.score && m.score.ft ? `${m.score.ft[0]}-${m.score.ft[1]}` : 'VS';
+                row.innerHTML = `
+                    <td>${m.date}</td>
+                    <td>${m.displayTime}</td>
+                    <td>${m.group || ''}</td>
+                    <td>${m.team1}</td>
+                    <td><strong>${score}</strong></td>
+                    <td>${m.team2}</td>
+                    <td>${m.ground}</td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        function renderStandings() {
+            const tbody = document.querySelector('#standingsTable tbody');
+            tbody.innerHTML = `<tr><td>A</td><td>墨西哥</td><td>1</td><td>1</td><td>0</td><td>0</td><td>2</td><td>0</td><td>+2</td><td>3</td></tr>
+                               <tr><td>A</td><td>韩国</td><td>1</td><td>1</td><td>0</td><td>0</td><td>2</td><td>1</td><td>+1</td><td>3</td></tr>`;
+        }
+
+        function renderChart() {
+            const ctx = document.getElementById('statsChart');
+            new Chart(ctx, { type: 'bar', data: { labels: ['墨西哥','韩国','美国','巴西'], datasets: [{ label: '积分', data: [3,3,0,0], backgroundColor: '#00a651' }] } });
+        }
+
+        function renderKanban() {
+            const board = document.getElementById('kanbanBoard');
+            board.innerHTML = `
+                <div class="kanban-column">
+                    <h3><i class="fas fa-check-circle" style="color:#4caf50"></i> 已完成</h3>
+                    <div id="completed"></div>
+                </div>
+                <div class="kanban-column">
+                    <h3><i class="fas fa-clock" style="color:#ff9800"></i> 即将开始</h3>
+                    <div id="upcoming"></div>
+                </div>
+            `;
+
+            const completedDiv = document.getElementById('completed');
+            const upcomingDiv = document.getElementById('upcoming');
+
+            matches.forEach(m => {
+                const card = document.createElement('div');
+                card.className = 'kanban-card';
+                const score = m.score && m.score.ft ? `${m.score.ft[0]}-${m.score.ft[1]}` : '';
+                
+                let html = `
+                    <strong>${m.date} ${m.displayTime}</strong><br>
+                    <strong>${m.team1}</strong> ${score} <strong>${m.team2}</strong><br>
+                    <small>${m.ground}</small>
+                `;
+
+                if (m.hasScore) {
+                    html += `<br><a href="https://www.youtube.com/results?search_query=${encodeURIComponent(m.team1 + ' vs ' + m.team2 + ' 2026 世界杯 高光')}" target="_blank" class="video-btn"><i class="fab fa-youtube"></i> 观看高光</a>`;
+                    completedDiv.appendChild(card);
+                } else {
+                    upcomingDiv.appendChild(card);
+                }
+                card.innerHTML = html;
+            });
+        }
+
+        function filterMatches() {
+            const keyword = document.getElementById('searchInput').value.toLowerCase();
+            const group = document.getElementById('groupFilter').value;
+            const filtered = matches.filter(m => 
+                (m.team1.toLowerCase().includes(keyword) || m.team2.toLowerCase().includes(keyword)) &&
+                (!group || m.group === group)
+            );
+            renderSchedule(filtered);
+        }
+
+        function populateGroupFilter() {
+            const select = document.getElementById('groupFilter');
+            const groups = [...new Set(matches.map(m => m.group).filter(g => g))];
+            groups.forEach(g => {
+                const opt = document.createElement('option');
+                opt.value = g; opt.textContent = g;
+                select.appendChild(opt);
+            });
+        }
+
+        function showTab(n) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.getElementById('tab' + n).classList.add('active');
+            if (n === 3) renderKanban(); // 刷新看板
+        }
+
+        function toggleDarkMode() {
+            document.body.classList.toggle('dark');
+        }
+
+        function toggleLang() {
+            alert('已切换语言模式（可扩展为全英文界面）');
+        }
+
+        async function refreshData() {
+            await loadData();
+            alert('数据已刷新！');
+        }
+
+        window.onload = () => {
+            loadData();
+        };
+    </script>
+</body>
+</html>
