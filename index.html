@@ -8,274 +8,49 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     <style>
         :root { --primary: #00a651; }
-        body { font-family: 'Microsoft YaHei', Arial, sans-serif; margin: 0; padding: 0; background: #f4f4f4; color: #333; transition: all 0.3s; }
+        body { font-family: 'Microsoft YaHei', Arial, sans-serif; margin: 0; padding: 0; background: #f4f4f4; color: #333; }
         .dark body { background: #1a1a1a; color: #ddd; }
         header { background: var(--primary); color: white; padding: 1rem; text-align: center; position: sticky; top: 0; z-index: 100; }
         .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
-        table { width: 100%; border-collapse: collapse; margin: 20px 0; background: white; }
+        table { width: 100%; border-collapse: collapse; margin: 20px 0; background: white; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
         .dark table { background: #2a2a2a; }
         th, td { border: 1px solid #ddd; padding: 12px; text-align: center; }
         .dark th, .dark td { border-color: #555; }
-        .match-row:hover { background: #f0f0f0; }
-        .dark .match-row:hover { background: #3a3a3a; }
-        .filters { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 20px; align-items: center; }
-        input, select, button { padding: 10px; border: 1px solid #ccc; border-radius: 6px; font-size: 14px; }
-        button { background: var(--primary); color: white; border: none; cursor: pointer; transition: 0.2s; }
+        .match-row:hover { background: #f8f8f8; }
+        .filters { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 20px; }
+        button { padding: 10px 16px; background: var(--primary); color: white; border: none; border-radius: 6px; cursor: pointer; margin: 4px; }
         button:hover { background: #008c44; }
         .tab { display: none; }
         .tab.active { display: block; }
-        .tab-buttons { margin-bottom: 15px; }
-        .tab-buttons button { margin-right: 8px; }
-        .countdown { font-weight: bold; color: #d32f2f; }
-        .beijing-time { color: #1976d2; font-weight: 500; }
+        
+        /* 看板样式 */
+        .kanban-board { display: flex; gap: 20px; flex-wrap: wrap; }
+        .kanban-column { flex: 1; min-width: 300px; background: white; border-radius: 12px; padding: 15px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        .dark .kanban-column { background: #2a2a2a; }
+        .kanban-column h3 { text-align: center; margin-bottom: 15px; padding-bottom: 10px; border-bottom: 3px solid var(--primary); }
+        .kanban-card { background: #f9f9f9; border-radius: 8px; padding: 15px; margin-bottom: 12px; box-shadow: 0 2px 6px rgba(0,0,0,0.08); }
+        .dark .kanban-card { background: #3a3a3a; }
+        .video-btn { background: #e53935; color: white; padding: 6px 12px; border-radius: 4px; font-size: 13px; display: inline-block; margin-top: 8px; text-decoration: none; }
+        .video-btn:hover { background: #c62828; }
     </style>
 </head>
 <body>
     <header>
         <h1>🏆 2026 FIFA世界杯赛程与实时统计</h1>
-        <div style="margin-top: 10px;">
-            <button onclick="toggleDarkMode()"><i class="fas fa-moon"></i> 切换暗黑模式</button>
+        <div style="margin-top:10px;">
+            <button onclick="toggleDarkMode()"><i class="fas fa-moon"></i> 暗黑模式</button>
             <button onclick="toggleLang()"><i class="fas fa-language"></i> 中/EN</button>
             <button onclick="refreshData()"><i class="fas fa-sync"></i> 刷新数据</button>
         </div>
     </header>
 
     <div class="container">
-        <!-- 筛选 -->
         <div class="filters">
-            <input type="text" id="searchInput" placeholder="搜索球队名称..." onkeyup="filterMatches()">
+            <input type="text" id="searchInput" placeholder="搜索球队..." onkeyup="filterMatches()">
             <select id="groupFilter" onchange="filterMatches()">
                 <option value="">所有小组</option>
             </select>
         </div>
 
-        <!-- 标签切换 -->
-        <div class="tab-buttons">
-            <button onclick="showTab(0)">赛程表</button>
-            <button onclick="showTab(1)">积分榜</button>
-            <button onclick="showTab(2)">统计图表</button>
-        </div>
-
-        <!-- 赛程 -->
-        <div id="tab0" class="tab active">
-            <h3>小组赛 & 淘汰赛赛程（北京时间 UTC+8）</h3>
-            <table id="scheduleTable">
-                <thead>
-                    <tr>
-                        <th>日期</th>
-                        <th>北京时间</th>
-                        <th>小组</th>
-                        <th>主队</th>
-                        <th>比分</th>
-                        <th>客队</th>
-                        <th>场地</th>
-                    </tr>
-                </thead>
-                <tbody></tbody>
-            </table>
-        </div>
-
-        <!-- 积分榜 -->
-        <div id="tab1" class="tab">
-            <h3>小组积分榜（实时更新）</h3>
-            <table id="standingsTable">
-                <thead>
-                    <tr>
-                        <th>小组</th><th>球队</th><th>场次</th><th>胜</th><th>平</th><th>负</th>
-                        <th>进球</th><th>失球</th><th>净胜</th><th>积分</th>
-                    </tr>
-                </thead>
-                <tbody></tbody>
-            </table>
-        </div>
-
-        <!-- 图表 -->
-        <div id="tab2" class="tab">
-            <h3>球队表现统计</h3>
-            <canvas id="statsChart" height="120"></canvas>
-        </div>
-    </div>
-
-    <script>
-        let matches = [];
-        let currentLang = 'zh';
-        let darkMode = false;
-
-        // 球队简体中文映射
-        const teamMap = {
-            "Mexico": "墨西哥", "South Africa": "南非", "Korea Republic": "韩国", "Czechia": "捷克",
-            "Canada": "加拿大", "Bosnia and Herzegovina": "波黑", "Qatar": "卡塔尔", "Switzerland": "瑞士",
-            "Brazil": "巴西", "Morocco": "摩洛哥", "Haiti": "海地", "Scotland": "苏格兰",
-            "USA": "美国", "Paraguay": "巴拉圭", "Australia": "澳大利亚", "Türkiye": "土耳其",
-            "Germany": "德国", "Curaçao": "库拉索", "Côte d'Ivoire": "科特迪瓦", "Ecuador": "厄瓜多尔",
-            "Netherlands": "荷兰", "Japan": "日本", "Sweden": "瑞典", "Tunisia": "突尼斯",
-            "Belgium": "比利时", "Egypt": "埃及", "IR Iran": "伊朗", "New Zealand": "新西兰",
-            "Spain": "西班牙", "Cabo Verde": "佛得角", "Saudi Arabia": "沙特", "Uruguay": "乌拉圭",
-            "France": "法国", "Senegal": "塞内加尔", "Iraq": "伊拉克", "Norway": "挪威",
-            "Argentina": "阿根廷", "Algeria": "阿尔及利亚", "Austria": "奥地利", "Jordan": "约旦",
-            "Portugal": "葡萄牙", "Congo DR": "刚果民主共和国", "Uzbekistan": "乌兹别克斯坦", "Colombia": "哥伦比亚",
-            "England": "英格兰", "Croatia": "克罗地亚", "Ghana": "加纳", "Panama": "巴拿马"
-        };
-
-        // 时间转换：原时间 → 北京时间 (UTC+8)
-        function convertToBeijingTime(timeStr) {
-            if (!timeStr) return "待定";
-            const match = timeStr.match(/(\d+):(\d+)\s*UTC([+-]?\d+)/i);
-            if (!match) return timeStr + " (北京时间)";
-            
-            let hour = parseInt(match[1]);
-            let min = parseInt(match[2]);
-            let offset = parseInt(match[3]);
-            
-            // 计算北京时间 (UTC+8)
-            hour = hour - offset + 8;
-            if (hour >= 24) hour -= 24;
-            if (hour < 0) hour += 24;
-            
-            return `${hour.toString().padStart(2, '0')}:${min.toString().padStart(2, '0')} <span class="beijing-time">(北京时间)</span>`;
-        }
-
-        // 翻译球队名
-        function translateTeam(name) {
-            return teamMap[name] || name;
-        }
-
-        // 加载数据
-        async function loadData() {
-            try {
-                const res = await fetch('https://raw.githubusercontent.com/openfootball/worldcup.json/master/2026/worldcup.json');
-                const data = await res.json();
-                matches = (data.matches || []).map(m => ({
-                    ...m,
-                    team1: translateTeam(m.team1),
-                    team2: translateTeam(m.team2),
-                    displayTime: convertToBeijingTime(m.time),
-                    originalTime: m.time
-                }));
-            } catch (e) {
-                console.log("使用本地样本数据");
-                matches = getSampleMatches(); // 内置样本
-            }
-            renderSchedule();
-            renderStandings();
-            renderChart();
-            populateGroupFilter();
-        }
-
-        // 样本数据（完整功能演示用）
-        function getSampleMatches() {
-            return [
-                { date: "2026-06-11", displayTime: "03:00 <span class='beijing-time'>(北京时间)</span>", group: "Group A", team1: "墨西哥", team2: "南非", score: {ft: [2,0]}, ground: "墨西哥城" },
-                { date: "2026-06-11", displayTime: "10:00 <span class='beijing-time'>(北京时间)</span>", group: "Group A", team1: "韩国", team2: "捷克", score: {ft: [2,1]}, ground: "瓜达拉哈拉" },
-                { date: "2026-06-12", displayTime: "03:00 <span class='beijing-time'>(北京时间)</span>", group: "Group B", team1: "加拿大", team2: "波黑", ground: "多伦多" },
-                { date: "2026-06-12", displayTime: "09:00 <span class='beijing-time'>(北京时间)</span>", group: "Group D", team1: "美国", team2: "巴拉圭", ground: "洛杉矶" },
-                // 可继续添加更多...
-            ];
-        }
-
-        function renderSchedule(filteredMatches = matches) {
-            const tbody = document.querySelector('#scheduleTable tbody');
-            tbody.innerHTML = '';
-            filteredMatches.forEach(m => {
-                const row = document.createElement('tr');
-                row.className = 'match-row';
-                const score = m.score && m.score.ft ? `${m.score.ft[0]}-${m.score.ft[1]}` : 'VS';
-                row.innerHTML = `
-                    <td>${m.date}</td>
-                    <td>${m.displayTime}</td>
-                    <td>${m.group || '-'}</td>
-                    <td>${m.team1}</td>
-                    <td><strong>${score}</strong></td>
-                    <td>${m.team2}</td>
-                    <td>${m.ground || '-'}</td>
-                `;
-                tbody.appendChild(row);
-            });
-        }
-
-        function renderStandings() {
-            const tbody = document.querySelector('#standingsTable tbody');
-            tbody.innerHTML = '';
-            // 简化版积分计算（实际可扩展为完整逻辑）
-            const groups = {};
-            matches.forEach(m => {
-                if (!m.group || !m.score) return;
-                if (!groups[m.group]) groups[m.group] = {};
-                // 简单示例数据
-            });
-            // 这里显示示例积分（实际项目中可完善计算逻辑）
-            tbody.innerHTML = `
-                <tr><td>A</td><td>墨西哥</td><td>1</td><td>1</td><td>0</td><td>0</td><td>2</td><td>0</td><td>+2</td><td>3</td></tr>
-                <tr><td>A</td><td>韩国</td><td>1</td><td>1</td><td>0</td><td>0</td><td>2</td><td>1</td><td>+1</td><td>3</td></tr>
-            `;
-        }
-
-        function renderChart() {
-            const ctx = document.getElementById('statsChart');
-            if (window.myChart) window.myChart.destroy();
-            window.myChart = new Chart(ctx, {
-                type: 'bar',
-                data: {
-                    labels: ['墨西哥', '韩国', '美国', '巴西'],
-                    datasets: [{
-                        label: '当前积分',
-                        data: [3, 3, 0, 0],
-                        backgroundColor: '#00a651'
-                    }]
-                }
-            });
-        }
-
-        function filterMatches() {
-            const search = document.getElementById('searchInput').value.toLowerCase();
-            const group = document.getElementById('groupFilter').value;
-            
-            const filtered = matches.filter(m => {
-                const matchSearch = m.team1.toLowerCase().includes(search) || m.team2.toLowerCase().includes(search);
-                const matchGroup = !group || m.group === group;
-                return matchSearch && matchGroup;
-            });
-            renderSchedule(filtered);
-        }
-
-        function populateGroupFilter() {
-            const select = document.getElementById('groupFilter');
-            const groups = [...new Set(matches.map(m => m.group).filter(Boolean))];
-            groups.forEach(g => {
-                const opt = document.createElement('option');
-                opt.value = g;
-                opt.textContent = g;
-                select.appendChild(opt);
-            });
-        }
-
-        function showTab(n) {
-            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-            document.getElementById('tab' + n).classList.add('active');
-        }
-
-        function toggleDarkMode() {
-            darkMode = !darkMode;
-            document.body.classList.toggle('dark', darkMode);
-        }
-
-        function toggleLang() {
-            currentLang = currentLang === 'zh' ? 'en' : 'zh';
-            alert(currentLang === 'zh' ? '已切换为简体中文' : 'Switched to English');
-            // 可扩展为重新渲染球队名
-        }
-
-        async function refreshData() {
-            await loadData();
-            alert('数据已刷新！');
-        }
-
-        // 初始化
-        window.onload = function() {
-            loadData();
-            // 每60秒自动刷新（可选）
-            // setInterval(refreshData, 60000);
-        };
-    </script>
-</body>
-</html>
+        <div class="tab-buttons" style="margin-bottom:15px;">
+            <button onclick="showTab(0
